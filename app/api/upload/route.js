@@ -1,0 +1,1 @@
+export async function POST(req){const fd=await req.formData();const f=fd.get("file");if(!f)return Response.json({error:"No file"},{status:400});const name=f.name||"";if(!/\.(txt|csv|json)$/i.test(name))return Response.json({error:"Extraction adapter pending for this file type"},{status:415});return Response.json({name,text:(await f.text()).slice(0,50000)});}
