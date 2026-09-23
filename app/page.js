@@ -7,10 +7,15 @@ export default function Home(){
  function persist(q){setQueue(q);localStorage.setItem(KEY,JSON.stringify(q))}
  function addPending(item){persist([{...item,localId:item.localId||crypto.randomUUID(),syncStatus:"Pending"},...queue])}
  function resolveEntryDate(raw){
- const now=new Date(),d=new Date(now);const s=raw.toLowerCase();
+ const now=new Date(),d=new Date(now),s=raw.toLowerCase();
+ // Entry Date is when the activity happened. Future task deadlines must never change it.
  if(/গতকাল|yesterday|कल/.test(s))d.setDate(d.getDate()-1);
- else if(/পরশু|day before yesterday/.test(s))d.setDate(d.getDate()-2);
- else{const m=raw.match(/(?:^|\s)(\d{1,2})(?:st|nd|rd|th)?\s*(?:তারিখ|date)?(?:\s|$)/i);if(m){const day=+m[1];if(day>=1&&day<=31){d.setDate(day);if(d>now)d.setMonth(d.getMonth()-1)}}}
+ else if(/day before yesterday/.test(s))d.setDate(d.getDate()-2);
+ else{
+  // Only explicit past-date wording may back-date the activity.
+  const m=raw.match(/(?:on|dated|তারিখ|date)\s*(\d{1,2})(?:st|nd|rd|th)?/i);
+  if(m){const day=+m[1];if(day>=1&&day<=31){d.setDate(day);if(d>now)d.setMonth(d.getMonth()-1)}}
+ }
  return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
  }
  function organize(){if(!text.trim()){setMsg("আগে কিছু বলুন, লিখুন বা upload করুন।");return}setPreview({...classify(text.trim()),entryDate:resolveEntryDate(text.trim())});setMsg("")}
