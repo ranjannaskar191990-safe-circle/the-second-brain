@@ -39,11 +39,11 @@ export default function Home(){
     let interim="";
     for(let i=e.resultIndex;i<e.results.length;i++){
      const x=e.results[i][0].transcript.trim();
-     if(e.results[i].isFinal){voiceFinal.current=(voiceFinal.current+" "+x).trim()}else interim=x;
+     if(e.results[i].isFinal){const prev=voiceFinal.current.trim();if(x&&!prev.toLowerCase().endsWith(x.toLowerCase()))voiceFinal.current=(prev+" "+x).trim()}else interim=x;
     }
     setText((voiceFinal.current+" "+interim).trim());setPreview(null);
    };
-   r.onerror=e=>{
+   r.onspeechend=()=>setMsg("কথা শেষ হয়েছে মনে হচ্ছে… আরও বললে শুনতে থাকব।");r.onerror=e=>{
     if(e.error==="not-allowed"){voiceActive.current=false;setListening(false);setMsg("Microphone permission Allow করুন।")}
     else if(!["no-speech","aborted"].includes(e.error)){setMsg("Voice recognition সাময়িকভাবে থেমেছে—আবার শুনছি…")}
    };
