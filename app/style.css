@@ -17,3 +17,5 @@
 .voiceHint{margin:8px 2px;font-size:11px;font-weight:750;color:#667085}
 
 .multiEntry{padding:10px 0;border-bottom:1px solid #edf0f4}.multiEntry:last-of-type{border-bottom:0}.multiEntry .chips{margin-top:7px}
+
+.understood{margin:8px 0;padding:9px 11px;border-radius:12px;background:#f6f8fb;font-size:12px;line-height:1.45}.understood small{display:block;font-size:9px;font-weight:850;letter-spacing:.5px;color:#7b8598;margin-bottom:3px}
