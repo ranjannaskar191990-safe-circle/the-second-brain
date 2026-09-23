@@ -33,12 +33,12 @@ export default function Home(){
    const r=new SR();rec.current=r;
    // Browser speech recognition has no true multilingual-auto flag.
    // bn-IN is the best base for Bengali speech while preserving many English terms.
-   r.lang=lang==="auto"?"bn-IN":lang;r.interimResults=true;r.continuous=true;
+   r.lang=lang==="auto"?"bn-IN":lang;r.interimResults=true;r.continuous=true;r.maxAlternatives=5;
    r.onstart=()=>{setListening(true);setMsg("শুনছি… কথা শেষ না হওয়া পর্যন্ত Stop চাপবেন না।")};
    r.onresult=e=>{
     let interim="";
     for(let i=e.resultIndex;i<e.results.length;i++){
-     const x=e.results[i][0].transcript.trim();
+     const alts=Array.from(e.results[i]);const score=a=>{const z=a.transcript;return (/[A-Za-z]{2,}/.test(z)?2:0)+(/\d/.test(z)?1:0)+(a.confidence||0)};alts.sort((a,b)=>score(b)-score(a));const x=alts[0].transcript.trim();
      if(e.results[i].isFinal){const prev=voiceFinal.current.trim();if(x&&!prev.toLowerCase().endsWith(x.toLowerCase()))voiceFinal.current=(prev+" "+x).trim()}else interim=x;
     }
     setText((voiceFinal.current+" "+interim).trim());setPreview(null);
