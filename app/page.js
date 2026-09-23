@@ -2,7 +2,7 @@
 import{useEffect,useRef,useState}from"react";import{classify}from"../lib/classify";
 const KEY="second-brain-queue";
 export default function Home(){
- const[text,setText]=useState("");const[preview,setPreview]=useState(null);const[msg,setMsg]=useState("");const[queue,setQueue]=useState([]);const[busy,setBusy]=useState(false);const[listening,setListening]=useState(false);const[lang,setLang]=useState("bn-IN");const rec=useRef(null);
+ const[text,setText]=useState("");const[preview,setPreview]=useState(null);const[msg,setMsg]=useState("");const[queue,setQueue]=useState([]);const[busy,setBusy]=useState(false);const[listening,setListening]=useState(false);const[lang,setLang]=useState("auto");const rec=useRef(null);const voiceActive=useRef(false);const voiceFinal=useRef("");
  useEffect(()=>{try{setQueue(JSON.parse(localStorage.getItem(KEY)||"[]"))}catch{setQueue([])}},[]);
  function persist(q){setQueue(q);localStorage.setItem(KEY,JSON.stringify(q))}
  function addPending(item){persist([{...item,localId:item.localId||crypto.randomUUID(),syncStatus:"Pending"},...queue])}
@@ -22,11 +22,43 @@ export default function Home(){
  async function send(item){const r=await fetch("/api/entries",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(item)});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)throw new Error(d.error||"Save failed");return d}
  async function save(){if(!preview||busy)return;setBusy(true);const capturedAt=new Date().toISOString();const item={...preview,timestamp:capturedAt,capturedAt,entryDate:preview.entryDate||capturedAt.slice(0,10),localId:crypto.randomUUID()};try{await send(item);setMsg("✓ Google Drive-এ save হয়েছে।")}catch{addPending(item);setMsg("Google Drive-এ নিশ্চিত করা যায়নি—entry ফোনে Pending হিসেবে রাখা হয়েছে।")}finally{setBusy(false);setText("");setPreview(null)}}
  async function sync(){if(!queue.length||busy)return;setBusy(true);setMsg("Pending entry sync হচ্ছে…");const left=[];let done=0;for(const item of queue){try{await send(item);done++}catch{left.push(item)}}persist(left);setBusy(false);setMsg(done+(done===1?"টি":"টি")+" sync হয়েছে। "+(left.length?left.length+"টি এখনও Pending।":"সব Pending entry শেষ।"))}
- function speak(){if(listening){rec.current?.stop();return}const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){setMsg("Voice input-এর জন্য Android Chrome ব্যবহার করুন।");return}const r=new SR();rec.current=r;r.lang=lang;r.interimResults=true;r.continuous=false;let final="";r.onstart=()=>{setListening(true);setMsg("")};r.onresult=e=>{let interim="";for(let i=e.resultIndex;i<e.results.length;i++){const x=e.results[i][0].transcript;if(e.results[i].isFinal)final+=(final?" ":"")+x;else interim=x}setText((final||interim).trim());setPreview(null)};r.onerror=e=>{setListening(false);setMsg(e.error==="not-allowed"?"Microphone permission Allow করুন।":"কথা পরিষ্কার ধরা যায়নি। আবার চেষ্টা করুন।")};r.onend=()=>{setListening(false);if(final.trim())setMsg("Transcript দেখে ঠিক থাকলে Organize চাপুন।")};r.start()}
+ function speak(){
+  if(listening){voiceActive.current=false;rec.current?.stop();return}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){setMsg("এই browser-এ voice recognition support নেই। Android Chrome ব্যবহার করুন।");return}
+  voiceActive.current=true;voiceFinal.current=text.trim();
+  const start=()=>{
+   if(!voiceActive.current)return;
+   const r=new SR();rec.current=r;
+   // Browser speech recognition has no true multilingual-auto flag.
+   // bn-IN is the best base for Bengali speech while preserving many English terms.
+   r.lang=lang==="auto"?"bn-IN":lang;r.interimResults=true;r.continuous=true;
+   r.onstart=()=>{setListening(true);setMsg("শুনছি… কথা শেষ না হওয়া পর্যন্ত Stop চাপবেন না।")};
+   r.onresult=e=>{
+    let interim="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+     const x=e.results[i][0].transcript.trim();
+     if(e.results[i].isFinal){voiceFinal.current=(voiceFinal.current+" "+x).trim()}else interim=x;
+    }
+    setText((voiceFinal.current+" "+interim).trim());setPreview(null);
+   };
+   r.onerror=e=>{
+    if(e.error==="not-allowed"){voiceActive.current=false;setListening(false);setMsg("Microphone permission Allow করুন।")}
+    else if(!["no-speech","aborted"].includes(e.error)){setMsg("Voice recognition সাময়িকভাবে থেমেছে—আবার শুনছি…")}
+   };
+   r.onend=()=>{
+    setListening(false);
+    if(voiceActive.current){setTimeout(()=>{try{start()}catch{}},250)}
+    else if(voiceFinal.current.trim())setMsg("পুরো transcript দেখে ঠিক থাকলে Organize চাপুন।");
+   };
+   try{r.start()}catch{voiceActive.current=false;setListening(false)}
+  };
+  start();
+ }
  async function upload(e){const f=e.target.files?.[0];if(!f)return;if(!/\.(txt|csv|json)$/i.test(f.name)){setMsg("এই মুহূর্তে TXT/CSV/JSON পড়তে পারছি। PDF/Word/Excel/Image support পরের upgrade-এ আসছে।");return}const v=(await f.text()).slice(0,10000);setText(v);setPreview(null);setMsg(f.name+" loaded — লেখাটি দেখে Organize চাপুন।")}
  return <main className="shell"><header><div className="brand">🧠</div><div><h1>The Second Brain</h1><p>বলুন, লিখুন বা upload করুন</p></div><span className={"badge "+(queue.length?"warn":"")}>{queue.length?queue.length+" Pending":"Drive ready"}</span></header>
  <a className="diaryButton" href="/finance"><span>💰</span><div><b>My Finance</b><small>income • expense • balance • savings</small></div><strong>›</strong></a><a className="diaryButton" href="/schedule"><span>📅</span><div><b>My Schedule</b><small>pending • today • upcoming • completed • tasks</small></div><strong>›</strong></a><a className="diaryButton" href="/diary"><span>📖</span><div><b>My Diary</b><small>সব saved entry • organized & searchable</small></div><strong>›</strong></a><section className="hero card"><div className="mode"><button className={listening?"active":""} onClick={speak}><span>{listening?"⏹":"🎤"}</span>{listening?"Stop":"Speak"}</button><button onClick={()=>document.getElementById("braintext")?.focus()}><span>✍️</span>Write</button><label><span>📎</span>Upload<input type="file" onChange={upload}/></label></div>
- <div className="lang"><span>Voice</span><select value={lang} onChange={e=>setLang(e.target.value)}><option value="bn-IN">বাংলা</option><option value="en-IN">English</option><option value="hi-IN">हिंदी</option></select></div>
+ <div className="lang"><span>Voice</span><select value={lang} onChange={e=>setLang(e.target.value)}><option value="auto">Auto • বাংলা + English + हिंदी</option><option value="bn-IN">বাংলা</option><option value="en-IN">English</option><option value="hi-IN">हिंदी</option></select></div>
  {listening&&<div className="listening"><i/>Listening… এখন বলুন</div>}
  <textarea id="braintext" value={text} onChange={e=>{setText(e.target.value);setPreview(null)}} placeholder="আপনার কথা এখানে দেখা যাবে। ভুল থাকলে save করার আগে ঠিক করে নিন…"/>
  <button className="primary" onClick={organize} disabled={!text.trim()}>✨ Organize & Preview</button>{msg&&<div className="notice">{msg}</div>}</section>
