@@ -1,0 +1,8 @@
+"use client";
+import{useEffect,useMemo,useState}from"react";
+export default function Schedule(){const[items,setItems]=useState([]),[err,setErr]=useState("");const[tab,setTab]=useState("Pending");
+useEffect(()=>{fetch("/api/diary").then(r=>r.json()).then(d=>d.ok?setItems((d.entries||[]).filter(x=>x.category==="Tasks")):setErr(d.error||"Schedule load হয়নি")).catch(()=>setErr("Schedule load হয়নি"))},[]);
+const today=new Date();today.setHours(0,0,0,0);
+function state(x){const s=(x.status||"").toLowerCase();if(/done|complete|completed/.test(s))return"Completed";if(!x.dueDate)return"No date";const d=new Date(x.dueDate+"T00:00:00");if(d<today)return"Overdue";if(d.getTime()===today.getTime())return"Today";return"Upcoming"}
+const shown=useMemo(()=>items.filter(x=>tab==="Pending"?state(x)!=="Completed":state(x)===tab),[items,tab]);
+return <main className="diaryShell"><div className="diaryTop"><a className="back" href="/">‹</a><div><h1>📅 My Schedule</h1><p>Pending work • due dates • reminders</p></div></div><div className="filters">{["Pending","Overdue","Today","Upcoming","No date","Completed"].map(x=><button key={x} className={tab===x?"on":""} onClick={()=>setTab(x)}>{x}</button>)}</div>{err&&<div className="notice">{err}</div>}{shown.map((x,i)=><article className="entry" key={x.timestamp||i}><div className="entryHead"><span className="cat">{state(x)}</span><time>{x.dueDate||x.date||""}</time></div><div className="entryText">{x.taskAction||x.original}</div>{x.project&&<div className="meta">Project: {x.project}</div>}</article>)}{!err&&!shown.length&&<div className="empty">এই section-এ কোনো কাজ নেই।</div>}<p className="foot">Future upgrade: Google Calendar + alert/reminder sync</p></main>}
