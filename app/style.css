@@ -7,3 +7,7 @@
 .financeTitle{font-size:15px;margin:18px 3px 9px}
 .entryDate{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0;padding:10px 12px;background:#f6f8fb;border-radius:13px;font-size:12px;font-weight:800;color:#58647a}
 .entryDate input{border:1px solid #dfe4ec;background:#fff;border-radius:9px;padding:7px;color:#172033}
+
+.taskDue{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.taskDue label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:800;color:#667085}
+.taskDue input{width:100%;border:1px solid #dfe4ec;background:#fff;border-radius:10px;padding:9px;color:#172033}
